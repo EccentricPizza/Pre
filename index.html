@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eccentric Pre-Order System</title>
+  <title>Location - Eccentric</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,16 +11,162 @@
     <div class="logo">Eccentric</div>
   </header>
 
-  <main>
-    <h1>Choose Your Location</h1>
-    <div class="locations-container">
-      <a href="limavady.html" class="location-box">
-        <h2>Limavady</h2>
-      </a>
-      <a href="eglinton.html" class="location-box">
-        <h2>Eglinton</h2>
-      </a>
+  <main class="layout">
+
+    <!-- LEFT SIDE = ITEMS -->
+    <div class="left">
+      <h1 id="location-title"></h1>
+
+      <div class="categories" id="category-buttons"></div>
+      <div class="menu-container" id="menu"></div>
+      <a href="index.html" class="back-link">← Back to Locations</a>
     </div>
+
+    <!-- RIGHT SIDE = BASKET -->
+    <div class="basket">
+      <h2>Your Basket</h2>
+      <div id="basket-items"></div>
+
+      <div class="basket-total">
+        Total: £<span id="basket-total">0.00</span>
+      </div>
+
+      <h3>Select Date</h3>
+      <input type="date" id="order-date">
+
+      <h3>Select Time</h3>
+      <select id="order-time"></select>
+
+      <button class="checkout-btn">Confirm Order</button>
+    </div>
+
   </main>
+
+  <script src="js/data.js"></script>
+
+  <script>
+    // Parse location
+    const params = new URLSearchParams(window.location.search);
+    const loc = params.get("loc");
+
+    if (!loc || !locationCategories[loc]) {
+      document.body.innerHTML = "<h1>Invalid Location</h1>";
+      throw new Error("Invalid location");
+    }
+
+    document.getElementById("location-title").textContent =
+      `Items Available in ${loc.charAt(0).toUpperCase() + loc.slice(1)}`;
+
+    const allowedCategories = locationCategories[loc];
+    const categoryButtonsDiv = document.getElementById("category-buttons");
+    const menuDiv = document.getElementById("menu");
+    const basketDiv = document.getElementById("basket-items");
+    const basketTotalSpan = document.getElementById("basket-total");
+
+    let currentCategory = allowedCategories[0];
+    let basket = [];
+
+    // CATEGORY BUTTONS
+    function renderCategories() {
+      categoryButtonsDiv.innerHTML = "";
+
+      allowedCategories.forEach(cat => {
+        const btn = document.createElement("button");
+        btn.className = "category-btn" + (cat === currentCategory ? " active" : "");
+        btn.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+        btn.onclick = () => {
+          currentCategory = cat;
+          renderCategories();
+          renderMenu();
+        };
+        categoryButtonsDiv.appendChild(btn);
+      });
+    }
+
+    // ITEM LIST
+    function renderMenu() {
+      menuDiv.innerHTML = "";
+      const items = menuItems[currentCategory];
+
+      items.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "menu-item";
+
+        div.innerHTML = `
+          <h2>${item.name} - £${item.price}</h2>
+          <p>${item.desc}</p>
+          <button class="add-btn" onclick="addToBasket('${item.id}')">Add to Basket</button>
+        `;
+
+        menuDiv.appendChild(div);
+      });
+    }
+
+    // ADD TO BASKET
+    window.addToBasket = function(id) {
+      const item = Object.values(menuItems).flat().find(i => i.id === id);
+      basket.push(item);
+      renderBasket();
+    };
+
+    // RENDER BASKET
+    function renderBasket() {
+      basketDiv.innerHTML = "";
+      let total = 0;
+
+      basket.forEach((item, i) => {
+        total += item.price;
+
+        const row = document.createElement("div");
+        row.className = "basket-row";
+        row.innerHTML = `
+          ${item.name} - £${item.price}
+          <button class="remove-btn" onclick="removeItem(${i})">X</button>
+        `;
+        basketDiv.appendChild(row);
+      });
+
+      basketTotalSpan.textContent = total.toFixed(2);
+    }
+
+    window.removeItem = function(i) {
+      basket.splice(i, 1);
+      renderBasket();
+    };
+
+    // TIME SLOTS
+    const timeSelect = document.getElementById("order-time");
+    function createTimeSlots() {
+      let start = 16 * 60 + 10;   // 16:10
+      let end = 20 * 60 + 50;     // 20:50
+
+      while (start <= end) {
+        const h = Math.floor(start / 60).toString().padStart(2, "0");
+        const m = (start % 60).toString().padStart(2, "0");
+        const opt = document.createElement("option");
+        opt.value = `${h}:${m}`;
+        opt.textContent = `${h}:${m}`;
+        timeSelect.appendChild(opt);
+        start += 10;
+      }
+    }
+
+    // DATE LIMITS BASED ON LOCATION OPENING DAYS
+    const dateInput = document.getElementById("order-date");
+
+    dateInput.addEventListener("input", () => {
+      const d = new Date(dateInput.value);
+      const day = d.toLocaleString("en-UK", { weekday: "long" }).toLowerCase();
+
+      if (!openingDays[loc].includes(day)) {
+        alert(`${loc.charAt(0).toUpperCase() + loc.slice(1)} is closed on ${day}`);
+        dateInput.value = "";
+      }
+    });
+
+    createTimeSlots();
+    renderCategories();
+    renderMenu();
+  </script>
 </body>
 </html>
